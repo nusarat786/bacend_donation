@@ -4,6 +4,7 @@ const cors = require('cors');
 const sequelize = require('./Db/db'); // Import your Sequelize instance
 const userRoutes = require('./Routes/userRoute');
 const eventRoutes = require('./Routes/eventRouts');
+const entryRoutes = require('./Routes/entryRoutes');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const app = express();
@@ -16,6 +17,8 @@ app.use(cors());
 
 app.use('/userRoutes',userRoutes);
 app.use('/eventRoutes',eventRoutes);
+app.use('/entryRoutes',entryRoutes);
+
 
 
 // Swagger set up
