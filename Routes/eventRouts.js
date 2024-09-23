@@ -8,6 +8,7 @@ const admin = require('firebase-admin');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const path = require('path')
+require('dotenv').config();
 
 // Create Event API
 router.post('/events', verifyLogin, async (req, res) => {
@@ -208,18 +209,27 @@ router.get('/events/excel/:id', async (req, res) => {
 
 
 
-// Path to your service account key file
-let serviceAccountPath = path.resolve(__dirname, 'interviewqestion-firebase-adminsdk-p4tcx-403a3ac68b.json');
+// // Path to your service account key file
+// let serviceAccountPath = path.resolve(__dirname, 'interviewqestion.json');
 
-// Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
-process.env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountPath;
+// // Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
+// process.env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountPath;
+
+
+
+
+// // Initialize Firebase Admin with the service account
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccountPath),
+//   storageBucket: 'interviewqestion.appspot.com' // Your Firebase storage bucket name
+// });
 
 
 // Initialize Firebase Admin with the service account
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccountPath),
-  storageBucket: 'interviewqestion.appspot.com' // Your Firebase storage bucket name
-});
+    credential: admin.credential.cert(require(path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS))),
+    storageBucket: 'interviewqestion.appspot.com' // Your Firebase storage bucket name
+  });
 
 // Create a Google Cloud Storage client
 const storage = new Storage();
@@ -289,6 +299,97 @@ router.get('/events/excel2/:id', async (req, res) => {
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 });
+
+
+
+// // Retrieve the credentials from environment variables
+// const serviceAccount = {
+//     type: process.env.FIREBASE_TYPE,
+//     project_id: process.env.FIREBASE_PROJECT_ID,
+//     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+//     private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Ensure proper format for private key
+//     client_email: process.env.FIREBASE_CLIENT_EMAIL,
+//     client_id: process.env.FIREBASE_CLIENT_ID,
+//     auth_uri: process.env.FIREBASE_AUTH_URI,
+//     token_uri: process.env.FIREBASE_TOKEN_URI,
+//     auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+//     client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+//   };
+  
+//   // Initialize Firebase Admin SDK with the credentials object
+//   admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount),
+//     storageBucket: 'interviewqestion.appspot.com' // Your Firebase storage bucket name
+//   });
+  
+//   // Create a Google Cloud Storage client
+//   const storage = new Storage();
+  
+//   // Define the bucket name
+//   const bucketName = 'interviewqestion.appspot.com'; // Your bucket name
+  
+//   // Route to handle Excel report generation
+//   router.get('/events/excel2/:id', async (req, res) => {
+//     const { id } = req.params;
+  
+//     try {
+//       // Fetch the event from your PostgreSQL database
+//       const event = await Event.findOne({ where: { event_id: id } });
+  
+//       if (!event) {
+//         return res.status(404).json({ error: true, message: 'Event not found.' });
+//       }
+  
+//       // Create a new workbook and add a worksheet
+//       const workbook = new ExcelJS.Workbook();
+//       const worksheet = workbook.addWorksheet('Event Details');
+  
+//       // Define the columns
+//       worksheet.columns = [
+//         { header: 'Event ID', key: 'event_id', width: 15 },
+//         { header: 'Event Name', key: 'event_name', width: 30 },
+//         { header: 'Event Date', key: 'event_date', width: 20 },
+//         // Add more fields as needed
+//       ];
+  
+//       // Add the event data to the worksheet
+//       worksheet.addRow({
+//         event_id: event.event_id,
+//         event_name: event.event_name,
+//         event_date: event.event_date.toISOString().split('T')[0], // Format date if necessary
+//       });
+  
+//       // Write the workbook to a buffer
+//       const buffer = await workbook.xlsx.writeBuffer();
+  
+//       // Generate a unique file name
+//       const fileName = `event_${id}_${Date.now()}.xlsx`;
+  
+//       // Create a file in Firebase Storage
+//       const file = storage.bucket(bucketName).file(fileName);
+  
+//       // Upload the buffer to Firebase Storage
+//       await file.save(buffer, {
+//         metadata: {
+//           contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//         },
+//         public: true, // Make the file publicly accessible
+//       });
+  
+//       // Get the public URL for the file
+//       const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+  
+//       // Respond with the public URL
+//       res.status(200).json({
+//         error: false,
+//         message: 'Report generated successfully',
+//         url: publicUrl,
+//       });
+//     } catch (err) {
+//       console.error('Error generating report:', err);
+//       res.status(500).json({ error: true, message: 'Internal server error' });
+//     }
+//   });
 
 
 module.exports = router;
