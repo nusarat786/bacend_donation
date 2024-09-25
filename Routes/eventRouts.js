@@ -568,7 +568,7 @@ async function createReceipt2(entryId) {
   }
 
 
-async function createReceipt3(entryId) {
+async function createReceipt33(entryId) {
     try {
       const entry = await Entry.findOne({ where: { entry_id: entryId } });
       if (!entry) throw new Error('Entry not found');
@@ -657,6 +657,109 @@ async function createReceipt3(entryId) {
       throw err;
     }
   }
+
+  async function createReceipt3(entryId) {
+    try {
+      const entry = await Entry.findOne({ where: { entry_id: entryId } });
+      if (!entry) throw new Error('Entry not found');
+  
+      const event = await Event.findOne({ where: { event_id: entry.event_id } });
+      if (!event) throw new Error('Event not found');
+  
+      const user = await User.findOne({ where: { user_id: event.created_by } });
+      if (!user) throw new Error('Event creator (user) not found');
+  
+      // Extracting data
+      const { contributor_name, amount } = entry; // Get contributor name from the Entry model
+      const { event_name, location, description } = event; // Added event description
+      const userName = user.name; // Get user's name for the signature
+      const userPhone = user.phone; // Assuming user has a phone field
+  
+      // Create a canvas with width and height
+      const width = 800;
+      const height = 650; // Increased height to accommodate additional text
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext('2d');
+  
+      // Background (Light Grey)
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, width, height);
+  
+      // Centered Charity Name (For + event_name)
+      ctx.fillStyle = '#000080';
+      ctx.font = 'bold 30px Arial';
+      const eventNameText = `For ${event_name}`;
+      const eventNameWidth = ctx.measureText(eventNameText).width;
+      ctx.fillText(eventNameText, (width - eventNameWidth) / 2, 50); // Center the text
+  
+      // Event Description (Black color)
+      ctx.fillStyle = '#000000'; // Set font color to black
+      ctx.font = '18px Arial'; // Regular Arial font
+      const eventDescriptionText = `${description || 'No description provided'}`;
+      const eventDescriptionWidth = ctx.measureText(eventDescriptionText).width;
+      ctx.fillText(eventDescriptionText, (width - eventDescriptionWidth) / 2, 90); // Centered below event name
+  
+      // Centered User's email below the description
+      ctx.font = '20px Arial';
+      const userEmailText = `${user.email}`;
+      const userEmailWidth = ctx.measureText(userEmailText).width;
+      ctx.fillText(userEmailText, (width - userEmailWidth) / 2, 130); // Center the email below the description
+  
+      // Title - Donation Receipt
+      ctx.font = 'bold 25px Arial';
+      ctx.fillStyle = '#333';
+      ctx.fillText('DONATION RECEIPT', 280, 180);
+  
+      // Lines and Fields
+      ctx.font = '18px Arial';
+      ctx.fillText(`Date: ${new Date().toLocaleDateString()}`, 50, 220);
+      ctx.fillText(`Donation ID: ${entryId}`, 600, 220); // Using entryId as Donation ID
+  
+      // Display Contributor's Name
+      ctx.font = '20px Arial';
+      ctx.fillText(`Donated By: ${contributor_name}`, 50, 260); // Normal contributor name
+  
+      ctx.fillText('Donor Address:', 50, 300);
+      ctx.fillText(`Amount received by charity: $${amount.toFixed(2)}`, 50, 340);
+  
+      // Description of property received by charity
+      ctx.fillText('Description of donation:', 50, 380);
+      ctx.fillText(`Event: ${event_name}, Location: ${location}`, 50, 410); // Example description
+  
+      // Add OK logo
+      const logo = await loadImage(path.join(__dirname, 'logo.png')); // Ensure you have an "OK" logo image
+      ctx.drawImage(logo, 600, 480, 80, 80); // Positioning the logo
+  
+      // Position user's name below the logo
+      ctx.font = 'italic 20px "Brush Script MT", cursive'; // Cursive font for user's name
+      ctx.fillText(userName, 600, 580); // Display user's name in cursive below the logo
+  
+      // Position user's phone number below the signature
+      ctx.font = '18px Arial'; // Standard font for phone number
+      ctx.fillText(`Phone: ${userPhone || 'N/A'}`, 600, 610); // Display phone number below signature
+  
+      // Convert canvas to buffer
+      const buffer = canvas.toBuffer('image/png');
+  
+      // Generate unique filename
+      const fileName = `receipts/receipt_${entryId}_${Date.now()}.png`;
+      const file = bucket.file(fileName);
+  
+      // Upload buffer to Firebase Storage
+      await file.save(buffer, {
+        metadata: { contentType: 'image/png' },
+        public: true,
+      });
+  
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      console.log('Receipt uploaded:', publicUrl);
+      return publicUrl;
+    } catch (err) {
+      console.error('Error generating receipt:', err);
+      throw err;
+    }
+  }
+  
   
   // Example route to generate and return receipt URL for a specific entry
   router.get('/events/receipt/:entryId', async (req, res) => {
