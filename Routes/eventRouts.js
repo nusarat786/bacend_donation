@@ -761,7 +761,8 @@ async function createReceipt33(entryId) {
   }
   
   
-  // Example route to generate and return receipt URL for a specific entry
+  
+  //Example route to generate and return receip URL for a specific entry
   router.get('/events/receipt/:entryId', async (req, res) => {
     const { entryId } = req.params;
   
