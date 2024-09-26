@@ -241,7 +241,7 @@ const storage = new Storage();
 const bucketName = 'interviewqestion.appspot.com'; // Your bucket name
 
 // Get Event by ID and respond with a downloadable URL for an Excel report
-router.get('/events/excel2/:id', async (req, res) => {
+router.get('/events/excel22/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -302,6 +302,208 @@ router.get('/events/excel2/:id', async (req, res) => {
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 });
+
+
+// Get Event by ID and generate a detailed Excel report
+router.get('/events/excel2/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Fetch the event by ID
+    const event = await Event.findOne({ where: { event_id: id } });
+    if (!event) {
+      return res.status(404).json({ error: true, message: 'Event not found.' });
+    }
+
+    // 2. Fetch the user who created the event
+    const user = await User.findOne({ where: { user_id: event.created_by } });
+    if (!user) {
+      return res.status(404).json({ error: true, message: 'User not found.' });
+    }
+
+    // 3. Fetch the entries related to the event
+    const entries = await Entry.findAll({ where: { event_id: id } });
+
+    // Create a new workbook
+    const workbook = new ExcelJS.Workbook();
+
+    // *** First Sheet: Event and User Information ***
+    const eventSheet = workbook.addWorksheet('Event & User Details');
+
+    // Define columns for event and user information
+    eventSheet.columns = [
+      { header: 'Event ID', key: 'event_id', width: 15 },
+      { header: 'Event Name', key: 'event_name', width: 30 },
+      { header: 'Event Date', key: 'event_date', width: 20 },
+      { header: 'Location', key: 'location', width: 20 },
+      { header: 'Description', key: 'description', width: 50 },
+      { header: 'Created By', key: 'created_by', width: 30 },
+      { header: 'User Email', key: 'user_email', width: 30 },
+      { header: 'User Phone', key: 'user_phone', width: 20 },
+      { header: 'User Role', key: 'user_role', width: 20 },
+    ];
+
+    // Add the event and user data to the first sheet
+    eventSheet.addRow({
+      event_id: event.event_id,
+      event_name: event.event_name,
+      event_date: event.event_date.toISOString().split('T')[0],
+      location: event.location,
+      description: event.description,
+      created_by: user.name,
+      user_email: user.email,
+      user_phone: user.phone,
+      user_role: user.role || 'N/A', // Include the user's role if available
+    });
+
+    // Set the style (center alignment and background) for the first sheet
+    eventSheet.eachRow((row, rowNumber) => {
+      row.alignment = { vertical: 'middle', horizontal: 'center' };
+      row.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: rowNumber === 1 ? 'FFFFCC00' : 'FFCCE5FF' }, // Yellow header, blue rows
+        };
+      });
+    });
+
+    // *** Second Sheet: Entries Information ***
+    const entrySheet = workbook.addWorksheet('Entries');
+
+    // Define columns for entries information
+    entrySheet.columns = [
+      { header: 'Entry ID', key: 'entry_id', width: 15 },
+      { header: 'Contributor Name', key: 'contributor_name', width: 30 },
+      { header: 'Contributor Nickname', key: 'contributor_nickname', width: 30 },
+      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Date', key: 'date', width: 20 },
+      { header: 'Entry Type', key: 'entry_type', width: 20 },
+    ];
+
+    // Set header row style with yellow background
+    const headerRow = entrySheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFCC00' }, // Yellow background for header
+      };
+      cell.font = {
+        bold: true,
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Add entry data to the second sheet with conditional formatting
+    entries.forEach(entry => {
+      const amount = entry.amount;
+      let bgColor, fontColor;
+
+      // Determine background and font colors based on amount
+      if (amount <= 100) {
+        bgColor = 'FFFFCCCC'; // Light red
+        fontColor = 'FF000000'; // Black
+      } else if (amount > 100 && amount <= 250) {
+        bgColor = 'FFCCFFFF'; // Light blue
+        fontColor = 'FF000000'; // Black
+      } else if (amount > 250 && amount <= 500) {
+        bgColor = 'FFCCFFCC'; // Light green
+        fontColor = 'FF000000'; // Black
+      } else if (amount > 500 && amount < 1000) {
+        bgColor = 'FF0000FF'; // Dark blue
+        fontColor = 'FFFFFFFF'; // White
+      } else if (amount >= 1000) {
+        bgColor = 'FF800080'; // Purple
+        fontColor = 'FFFFFFFF'; // White
+      }
+
+      // Add the entry row
+      const entryRow = entrySheet.addRow({
+        entry_id: entry.entry_id,
+        contributor_name: entry.contributor_name,
+        contributor_nickname: entry.contributor_nickname || 'N/A',
+        amount: entry.amount,
+        date: entry.date.toISOString().split('T')[0],
+        entry_type: entry.entry_type || 'Gift',
+      });
+
+      // Set the background and font colors for the row based on the amount
+      entryRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: bgColor },
+        };
+        cell.font = {
+          color: { argb: fontColor },
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+    });
+
+    // Add color coding information at the end of the entries sheet
+    entrySheet.addRow([]); // Add an empty row
+    entrySheet.addRow(['Amount Color Coding', '', '', '', '', '']);
+    entrySheet.addRow(['<= 100', 'Light Red', '', '', '', '']);
+    entrySheet.addRow(['> 100 and <= 250', 'Light Blue', '', '', '', '']);
+    entrySheet.addRow(['> 250 and <= 500', 'Light Green', '', '', '', '']);
+    entrySheet.addRow(['> 500 and < 1000', 'Dark Blue', '', '', '', '']);
+    entrySheet.addRow(['>= 1000', 'Purple', '', '', '', '']);
+
+    // Highlight the color coding information in yellow
+    const colorCodingStartRow = entrySheet.lastRow.number + 1;
+    entrySheet.getCell(`A${colorCodingStartRow}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFF00' }, // Yellow background for the title
+    };
+
+    // Set yellow background for all cells in color coding section
+    for (let row = colorCodingStartRow; row <= entrySheet.lastRow.number; row++) {
+      const currentRow = entrySheet.getRow(row);
+      currentRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' }, // Yellow background
+        };
+      });
+    }
+
+    // Write the workbook to a buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Generate a unique file name
+    const fileName = `event_${id}_${Date.now()}.xlsx`;
+
+    // Create a file in Firebase Storage
+    const file = storage.bucket(bucketName).file(fileName);
+
+    // Upload the buffer to Firebase Storage
+    await file.save(buffer, {
+      metadata: {
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      public: true, // Make the file publicly accessible
+    });
+
+    // Get the public URL
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+
+    // Respond with the public URL
+    res.status(200).json({
+      error: false,
+      message: 'Report generated successfully',
+      url: publicUrl,
+    });
+  } catch (err) {
+    console.error('Error generating report:', err);
+    res.status(500).json({ error: true, message: 'Internal server error' });
+  }
+});
+
+
 
 
 
@@ -658,6 +860,7 @@ async function createReceipt33(entryId) {
     }
   }
 
+
   async function createReceipt3(entryId) {
     try {
       const entry = await Entry.findOne({ where: { entry_id: entryId } });
@@ -708,7 +911,7 @@ async function createReceipt33(entryId) {
       // Title - Donation Receipt
       ctx.font = 'bold 25px Arial';
       ctx.fillStyle = '#333';
-      ctx.fillText('DONATION RECEIPT', 280, 180);
+      ctx.fillText('CONTRIBUTION RECEIPT', 280, 180);
   
       // Lines and Fields
       ctx.font = '18px Arial';
@@ -720,10 +923,10 @@ async function createReceipt33(entryId) {
       ctx.fillText(`Donated By: ${contributor_name}`, 50, 260); // Normal contributor name
   
       ctx.fillText('Donor Address:', 50, 300);
-      ctx.fillText(`Amount received by charity: $${amount.toFixed(2)}`, 50, 340);
+      ctx.fillText(`Amount received by charity: ₹ ${amount.toFixed(2)}`, 50, 340);
   
       // Description of property received by charity
-      ctx.fillText('Description of donation:', 50, 380);
+      ctx.fillText('Description of donation', 50, 380);
       ctx.fillText(`Event: ${event_name}, Location: ${location}`, 50, 410); // Example description
   
       // Add OK logo
@@ -759,10 +962,10 @@ async function createReceipt33(entryId) {
       throw err;
     }
   }
+
+
   
-  
-  
-  //Example route to generate and return receip URL for a specific entry
+  // Example route to generate and return receipt URL for a specific entry
   router.get('/events/receipt/:entryId', async (req, res) => {
     const { entryId } = req.params;
   
