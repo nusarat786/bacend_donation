@@ -48,7 +48,7 @@ const User = sequelize.define('User', {
       this.setDataValue('phone', value.trim()); // Trim whitespace
     },
   },
-  profile_image: {
+  Otp: {
     type: DataTypes.STRING(255),
     allowNull: true, // Optional
     defaultValue: null,
