@@ -20,7 +20,10 @@ app.use('/userRoutes',userRoutes);
 app.use('/eventRoutes',eventRoutes);
 app.use('/entryRoutes',entryRoutes);
 
-
+//test
+app.get("/test" ,(req,res)=>{
+  res.status(200).json({"error":false,"message":"tested"})
+})
 
 // Swagger set up
 const swaggerOptions = {
