@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
 // PostgreSQL connection setup using Sequelize
-const sequelize = new Sequelize('postgresql://nusarat_user:IaxubBquVa3TYjGNoTwYQ18pf6YnDI8X@dpg-ct7vm1pu0jms73at1u60-a.oregon-postgres.render.com/nusarat', {
+const sequelize = new Sequelize('postgresql://nusarat_user:IaxubBquVa3TYjGNoTwYQ18pf6YnDI8X@dpg-ct7vm1pu0jms73at1u60-a/nusarat', {
   dialect: 'postgres', // Specify that we're using PostgreSQL
 
   dialectOptions: {
@@ -14,3 +14,4 @@ const sequelize = new Sequelize('postgresql://nusarat_user:IaxubBquVa3TYjGNoTwYQ
 });
 
 module.exports = sequelize;
+
