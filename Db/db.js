@@ -2,13 +2,12 @@ require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
 // PostgreSQL connection setup using Sequelize
-const sequelize = new Sequelize('flutter_project_free', 'flutter_project_free_user', process.env.DB_URL, {
-  host: 'dpg-crmi1rdumphs739enq10-a.oregon-postgres.render.com', // or your server address
+const sequelize = new Sequelize('postgresql://nusarat_user:IaxubBquVa3TYjGNoTwYQ18pf6YnDI8X@dpg-ct7vm1pu0jms73at1u60-a.oregon-postgres.render.com/nusarat', {
   dialect: 'postgres', // Specify that we're using PostgreSQL
 
   dialectOptions: {
     ssl: {
-      require: true, // This will ensure SSL is required
+      require: true, // Ensure SSL is required
       rejectUnauthorized: false, // Set this to true in production for security
     },
   },
